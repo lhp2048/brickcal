@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "砖历",
+  "version": "1.3.5",
+  "description": "砖历：节假日与调休日历，查看中国调休与其他国家公共假。",
+  "permissions": ["storage", "alarms"],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
+  "action": {
+    "default_title": "砖历",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
