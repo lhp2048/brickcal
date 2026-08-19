@@ -104,6 +104,32 @@ body.options-page {
   max-height: 220px;
 }
 
+.clear-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.clear-row button {
+  border: 0;
+  background: var(--rest);
+  color: #fffaf1;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clear-row button:hover {
+  background: #245a4c;
+}
+
+.clear-stat {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .save-msg {
   margin: 0 12px;
   font-size: 12px;

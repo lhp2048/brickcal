@@ -467,6 +467,14 @@ function tickWorkTimer(at) {
   const t = now.getTime();
   applyWorkCopy(quote, workQuoteState, WORK_QUOTES, WORK_QUOTE_MS, t);
   applyWorkCopy(slogan, workSloganState, WORK_SLOGANS, WORK_SLOGAN_MS, t);
+  if (typeof tickBrickFall === "function") {
+    tickBrickFall({
+      progress: progress,
+      overtime: overtimePct > 0,
+      lunch: isLunchNow(now, hours),
+      rest: !!(panel && panel.classList.contains("rest")),
+    });
+  }
 }
 
 if (typeof module !== "undefined" && module.exports) {

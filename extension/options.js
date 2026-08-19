@@ -7,6 +7,13 @@ var SETTINGS_DEFAULTS = {
   workColor: "#ff8a2b",
   weekStart: "sun",
   monthSwitch: "dblclick",
+  brickClearDay: "",
+  brickClearCount: 0,
+  brickClearAt: 0,
+  brickManualDay: "",
+  brickManualCount: 0,
+  brickPileDay: "",
+  brickPile: [],
 };
 
 var optionsState = {
@@ -91,6 +98,30 @@ function persist() {
   });
 }
 
+function renderClearStat(saved) {
+  const stats = brickClearStats(saved);
+  document.getElementById("clearStat").textContent = "今天已清 " + stats.count + " 次";
+}
+
+function clearBricksNow() {
+  if (clearBricksNow.busy) {
+    return;
+  }
+  clearBricksNow.busy = true;
+  loadSettings()
+    .then(function (saved) {
+      const payload = brickClearPayload(saved);
+      return saveSettings(payload).then(function () {
+        renderClearStat(payload);
+      });
+    })
+    .then(function () {
+      clearBricksNow.busy = false;
+    }, function () {
+      clearBricksNow.busy = false;
+    });
+}
+
 function renderHome() {
   const select = document.getElementById("homeSelect");
   const countries = (optionsState.payload && optionsState.payload.countries) || {};
@@ -134,6 +165,7 @@ function bind() {
     updateColorPreview();
   });
   document.getElementById("workColor").addEventListener("change", persist);
+  document.getElementById("clearBricks").addEventListener("click", clearBricksNow);
 }
 
 Promise.all([fetch("./data/holidays.json").then(function (r) { return r.json(); }), loadSettings()])
@@ -159,6 +191,7 @@ Promise.all([fetch("./data/holidays.json").then(function (r) { return r.json(); 
     document.getElementById("monthSwitch").value = optionsState.monthSwitch;
     updateColorPreview();
     renderHome();
+    renderClearStat(pair[1]);
     bind();
   })
   .catch(function () {

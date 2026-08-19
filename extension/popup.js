@@ -481,6 +481,13 @@ function loadSettings() {
     workColor: "#ff8a2b",
     weekStart: "sun",
     monthSwitch: "dblclick",
+    brickClearDay: "",
+    brickClearCount: 0,
+    brickClearAt: 0,
+    brickManualDay: "",
+    brickManualCount: 0,
+    brickPileDay: "",
+    brickPile: [],
   };
   return new Promise(function (resolve) {
     function finish(items) {
@@ -507,6 +514,22 @@ function loadSettings() {
   });
 }
 
+var brickClearAtSeen = 0;
+var brickSettingsReady = false;
+
+function applyBrickClearSettings(saved) {
+  const at = saved && saved.brickClearAt ? saved.brickClearAt : 0;
+  if (!brickSettingsReady) {
+    brickSettingsReady = true;
+    if (typeof restoreBrickPile === "function") {
+      restoreBrickPile(saved);
+    }
+  } else if (at && at !== brickClearAtSeen && typeof restoreBrickPile === "function") {
+    restoreBrickPile(saved);
+  }
+  brickClearAtSeen = at;
+}
+
 function applyLoadedSettings(saved) {
   state.homeCountry = saved.homeCountry || "CN";
   if (state.payload && state.payload.countries && !state.payload.countries[state.homeCountry]) {
@@ -521,10 +544,11 @@ function applyLoadedSettings(saved) {
   applyWorkColor(saved.workColor || "#ff8a2b");
   state.weekStart = normalizeWeekStart(saved.weekStart);
   state.monthSwitch = normalizeMonthSwitch(saved.monthSwitch);
+  applyBrickClearSettings(saved);
 }
 
 function openSettingsPage() {
-  chrome.runtime.openOptionsPage();
+  chrome.runtime.sendMessage({ type: "open-settings" });
 }
 
 document.getElementById("calPrev").addEventListener("click", function () {
@@ -702,6 +726,9 @@ function revealWorkRail() {
   }
   document.body.classList.add("with-work");
   tickWorkTimer();
+  if (typeof startBrickFall === "function") {
+    startBrickFall();
+  }
   if (!window.__workTimer) {
     window.__workTimer = setInterval(tickWorkTimer, 1000);
   }

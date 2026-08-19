@@ -55,3 +55,54 @@ chrome.alarms.onAlarm.addListener(function (alarm) {
 chrome.storage.onChanged.addListener(function () {
   refreshBadge();
 });
+
+function createSettingsWindow() {
+  return chrome.windows
+    .create({
+      url: chrome.runtime.getURL("options.html"),
+      type: "popup",
+      width: 460,
+      height: 800,
+      focused: true,
+    })
+    .then(function (win) {
+      if (chrome.storage.session) {
+        return chrome.storage.session.set({ settingsWindowId: win.id });
+      }
+    });
+}
+
+function openSettingsWindow() {
+  const session = chrome.storage.session;
+  if (!session) {
+    return createSettingsWindow();
+  }
+  return session.get({ settingsWindowId: 0 }).then(function (saved) {
+    const id = saved.settingsWindowId;
+    if (!id) {
+      return createSettingsWindow();
+    }
+    return chrome.windows.update(id, { focused: true }).catch(function () {
+      return createSettingsWindow();
+    });
+  });
+}
+
+chrome.runtime.onMessage.addListener(function (msg) {
+  if (msg && msg.type === "open-settings") {
+    openSettingsWindow();
+  }
+});
+
+if (chrome.windows && chrome.windows.onRemoved) {
+  chrome.windows.onRemoved.addListener(function (id) {
+    if (!chrome.storage.session) {
+      return;
+    }
+    chrome.storage.session.get({ settingsWindowId: 0 }).then(function (saved) {
+      if (saved.settingsWindowId === id) {
+        chrome.storage.session.set({ settingsWindowId: 0 });
+      }
+    });
+  });
+}
