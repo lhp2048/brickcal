@@ -278,6 +278,188 @@ function cnHolidayName(payload, iso) {
   return homeHolidayName(payload, "CN", iso);
 }
 
+var CN_SOLAR_FEST = {
+  "01-01": "元旦",
+  "02-14": "情人节",
+  "03-08": "妇女节",
+  "03-12": "植树节",
+  "04-01": "愚人节",
+  "05-01": "劳动节",
+  "05-04": "青年节",
+  "06-01": "儿童节",
+  "07-01": "建党节",
+  "08-01": "建军节",
+  "09-10": "教师节",
+  "10-01": "国庆节",
+  "10-31": "万圣节",
+  "11-11": "光棍节",
+  "12-25": "圣诞节",
+};
+
+var CN_LUNAR_FEST = {
+  "1-1": "春节",
+  "1-15": "元宵节",
+  "2-2": "龙抬头",
+  "5-5": "端午节",
+  "7-7": "七夕",
+  "7-15": "中元节",
+  "8-15": "中秋节",
+  "9-9": "重阳节",
+  "12-8": "腊八节",
+  "12-23": "小年",
+};
+
+var CN_JIEQI_NAMES = [
+  "小寒",
+  "大寒",
+  "立春",
+  "雨水",
+  "惊蛰",
+  "春分",
+  "清明",
+  "谷雨",
+  "立夏",
+  "小满",
+  "芒种",
+  "夏至",
+  "小暑",
+  "大暑",
+  "立秋",
+  "处暑",
+  "白露",
+  "秋分",
+  "寒露",
+  "霜降",
+  "立冬",
+  "小雪",
+  "大雪",
+  "冬至",
+];
+
+var CN_JIEQI_OFFSET = [
+  0, 21208, 42467, 63836, 85337, 107014, 128867, 150921, 173149, 195551, 218072, 240693, 263343, 285989,
+  308563, 331033, 353350, 375494, 397447, 419210, 440795, 462224, 483532, 504758,
+];
+
+var cnJieqiYearCache = {};
+
+function lunarMonthDay(iso) {
+  try {
+    const parts = new Intl.DateTimeFormat("zh-CN-u-ca-chinese", {
+      month: "numeric",
+      day: "numeric",
+    }).formatToParts(parseDay(iso));
+    let month = 0;
+    let day = 0;
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i].type === "month") {
+        month = parseInt(parts[i].value, 10) || 0;
+      }
+      if (parts[i].type === "day") {
+        day = parseInt(parts[i].value, 10) || 0;
+      }
+    }
+    if (!month || !day) {
+      return null;
+    }
+    return { month: month, day: day };
+  } catch (err) {
+    return null;
+  }
+}
+
+function cnTraditionalName(iso) {
+  const d = parseDay(iso);
+  const md =
+    String(d.getUTCMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(d.getUTCDate()).padStart(2, "0");
+  if (CN_SOLAR_FEST[md]) {
+    return CN_SOLAR_FEST[md];
+  }
+  const lunar = lunarMonthDay(iso);
+  if (lunar) {
+    const key = lunar.month + "-" + lunar.day;
+    if (CN_LUNAR_FEST[key]) {
+      return CN_LUNAR_FEST[key];
+    }
+  }
+  const next = lunarMonthDay(shiftDay(iso, 1));
+  if (next && next.month === 1 && next.day === 1) {
+    return "除夕";
+  }
+  return "";
+}
+
+function cnJieqiMap(year) {
+  if (cnJieqiYearCache[year]) {
+    return cnJieqiYearCache[year];
+  }
+  const map = {};
+  for (let i = 0; i < 24; i++) {
+    const utc = new Date(31556925974.7 * (year - 1900) + CN_JIEQI_OFFSET[i] * 60000 + Date.UTC(1900, 0, 6, 2, 5));
+    const bj = new Date(utc.getTime() + 8 * 3600 * 1000);
+    const iso = bj.toISOString().slice(0, 10);
+    map[iso] = CN_JIEQI_NAMES[i];
+  }
+  cnJieqiYearCache[year] = map;
+  return map;
+}
+
+function cnSolarTermName(iso) {
+  const y = parseDay(iso).getUTCFullYear();
+  return cnJieqiMap(y)[iso] || cnJieqiMap(y - 1)[iso] || cnJieqiMap(y + 1)[iso] || "";
+}
+
+function cnDayMarks(payload, iso, isShift) {
+  const out = [];
+  function push(text, kind, label) {
+    if (!text) {
+      return;
+    }
+    for (let i = 0; i < out.length; i++) {
+      if (out[i].text === text) {
+        return;
+      }
+    }
+    out.push({ text: text, kind: kind, label: label });
+  }
+  if (isShift) {
+    push("班", "shift", "调休上班");
+  }
+  push(homeHolidayName(payload, "CN", iso), "fest", "节日");
+  push(cnTraditionalName(iso), "fest", "节日");
+  push(cnSolarTermName(iso), "term", "节气");
+  const lunar = lunarFullLabel(iso);
+  if (lunar) {
+    push("农历" + lunar, "lunar", "农历");
+  }
+  return out;
+}
+
+function cnDayMark(payload, iso, isShift) {
+  if (isShift) {
+    return { text: "班", kind: "shift" };
+  }
+  const publicName = homeHolidayName(payload, "CN", iso);
+  if (publicName) {
+    return { text: publicName, kind: "fest" };
+  }
+  const trad = cnTraditionalName(iso);
+  if (trad) {
+    return { text: trad, kind: "fest" };
+  }
+  const term = cnSolarTermName(iso);
+  if (term) {
+    return { text: term, kind: "term" };
+  }
+  const lunar = lunarLabel(iso);
+  if (lunar) {
+    return { text: lunar, kind: "lunar" };
+  }
+  return { text: "", kind: "" };
+}
+
 function normalizeWeekStart(value) {
   if (value === 1 || value === "1" || value === "mon") {
     return 1;
@@ -602,6 +784,10 @@ if (typeof module !== "undefined" && module.exports) {
     lunarFullLabel: lunarFullLabel,
     homeHolidayName: homeHolidayName,
     cnHolidayName: cnHolidayName,
+    cnTraditionalName: cnTraditionalName,
+    cnSolarTermName: cnSolarTermName,
+    cnDayMark: cnDayMark,
+    cnDayMarks: cnDayMarks,
     monthCells: monthCells,
     normalizeWeekStart: normalizeWeekStart,
     normalizeMonthSwitch: normalizeMonthSwitch,

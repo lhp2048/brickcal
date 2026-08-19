@@ -494,6 +494,11 @@ body {
   font-weight: 700;
 }
 
+.cell.term .s {
+  color: var(--rest);
+  font-weight: 700;
+}
+
 .cell.lunar .s {
   color: #8a7b6d;
 }
@@ -522,6 +527,85 @@ body {
 .cell.on {
   background: #eef4ff;
   box-shadow: inset 0 0 0 2px #4c8dff;
+}
+
+.cell[data-tip="1"] {
+  cursor: help;
+}
+
+.day-tip {
+  position: fixed;
+  z-index: 50;
+  min-width: 148px;
+  max-width: 220px;
+  padding: 8px 10px;
+  background: #fffaf1;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(36, 28, 20, 0.18);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+  pointer-events: auto;
+}
+
+.day-tip[hidden] {
+  display: none;
+}
+
+.day-tip.on {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.day-tip-head {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.day-tip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.day-tip-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.day-tip-list .k {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.day-tip-list .v {
+  flex: 1;
+  text-align: right;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.day-tip-list li.fest .v {
+  color: var(--accent);
+}
+
+.day-tip-list li.term .v {
+  color: var(--rest);
+}
+
+.day-tip-list li.shift .v {
+  color: var(--accent);
 }
 
 .next-holidays {

@@ -67,13 +67,14 @@ function renderCalendar(payload, selectedIso) {
       "</div>";
   });
   monthCells(calendarView.year, calendarView.month, 0).forEach(function (cell) {
-    const fest = cnHolidayName(payload, cell.iso);
-    const sub = fest || lunarLabel(cell.iso);
+    const mark = cnDayMark(payload, cell.iso, false);
     const cls = [
       "cal-cell",
       cell.inMonth ? "" : "out",
       cell.weekend ? "wk" : "",
-      fest ? "fest" : "",
+      mark.kind === "fest" ? "fest" : "",
+      mark.kind === "term" ? "term" : "",
+      mark.kind === "lunar" ? "lunar" : "",
       cell.iso === selected ? "selected" : "",
     ]
       .filter(Boolean)
@@ -86,7 +87,7 @@ function renderCalendar(payload, selectedIso) {
       '"><span class="n">' +
       cell.day +
       '</span><span class="sub">' +
-      escapeHtml(sub) +
+      escapeHtml(mark.text) +
       "</span></button>";
   });
   grid.innerHTML = html;

@@ -187,7 +187,7 @@ assert.strictEqual(pickWorkQuote(["a"], "a", function () { return 0; }), "a");
 assert.strictEqual(pickWorkQuote(["a", "b"], "a", function () { return 0; }), "b");
 assert.strictEqual(pickWorkQuote(["a", "b"], "x", function () { return 0; }), "a");
 
-const { isHomeRestDay, badgeText, homeHolidayName } = require(path.join(__dirname, "..", "web", "holiday.js"));
+const { isHomeRestDay, badgeText, homeHolidayName, cnDayMark, cnDayMarks, cnSolarTermName, cnTraditionalName } = require(path.join(__dirname, "..", "web", "holiday.js"));
 
 const restPayload = {
   countries: {
@@ -206,6 +206,19 @@ assert.strictEqual(badgeText(restPayload, "CN", new Date("2026-08-18T04:00:00Z")
 assert.strictEqual(badgeText(restPayload, "CN", new Date("2026-08-22T04:00:00Z")), "休");
 assert.strictEqual(badgeText(restPayload, "CN", new Date("2026-10-01T04:00:00Z")), "休");
 assert.strictEqual(badgeText(restPayload, "CN", new Date("2026-10-10T04:00:00Z")), "班");
+assert.strictEqual(cnSolarTermName("2026-04-05"), "清明");
+assert.strictEqual(cnSolarTermName("2026-02-04"), "立春");
+assert.strictEqual(cnTraditionalName("2026-03-03"), "元宵节");
+assert.strictEqual(cnTraditionalName("2026-08-19"), "七夕");
+assert.strictEqual(cnTraditionalName("2026-09-10"), "教师节");
+assert.strictEqual(cnDayMark(restPayload, "2026-10-01", false).text, "国庆节");
+assert.strictEqual(cnDayMark(restPayload, "2026-10-01", true).text, "班");
+assert.strictEqual(cnDayMark({}, "2026-04-05", false).kind, "term");
+assert.strictEqual(cnDayMark({}, "2026-03-03", false).text, "元宵节");
+const marksQingming = cnDayMarks({}, "2026-04-05", false);
+assert.ok(marksQingming.length >= 2);
+assert.ok(marksQingming.some(function (m) { return m.text === "清明"; }));
+assert.ok(marksQingming.some(function (m) { return m.kind === "lunar"; }));
 
 const listed = worldHolidayList(payload, {
   homeCountry: "CN",
