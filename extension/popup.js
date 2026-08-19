@@ -524,17 +524,6 @@ function applyLoadedSettings(saved) {
 }
 
 function openSettingsPage() {
-  const url = chrome.runtime.getURL("options.html");
-  if (chrome.windows && chrome.windows.create) {
-    chrome.windows.create({
-      url: url,
-      type: "popup",
-      width: 440,
-      height: 720,
-      focused: true,
-    });
-    return;
-  }
   chrome.runtime.openOptionsPage();
 }
 
