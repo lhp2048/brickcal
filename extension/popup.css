@@ -177,7 +177,7 @@ body {
 }
 
 .work-over-progress {
-  stroke: #8a120c;
+  stroke: rgba(138, 18, 12, 0.72);
 }
 
 .work-ring {
@@ -199,23 +199,39 @@ body {
 }
 
 .work-ring-track {
-  stroke: rgba(255, 255, 255, 0.22);
+  stroke: rgba(255, 255, 255, 0.18);
 }
 
 .work-ring-progress {
-  stroke: #fff;
+  stroke: rgba(255, 255, 255, 0.78);
 }
 
 .work-ring-core {
+  position: relative;
   width: 156px;
   height: 156px;
   border-radius: 50%;
-  background: linear-gradient(180deg, var(--work-core-top), var(--work-core-bottom));
+  background: transparent;
   display: grid;
   place-items: center;
   align-content: center;
   text-align: center;
-  transition: background 0.8s ease;
+}
+
+.work-ring-core::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--work-core-top), var(--work-core-bottom));
+  opacity: 0.58;
+  transition: background 0.8s ease, opacity 0.8s ease;
+  z-index: 0;
+}
+
+.work-ring-core > * {
+  position: relative;
+  z-index: 1;
 }
 
 .work-ring .ring-status {

@@ -1,7 +1,7 @@
 var BRICK_CAP_RATIO = 0.8;
 var BRICK_FLOOR_PAD = 2;
 var BRICK_SIDE_PAD = 8;
-var BRICK_DROP_CD_MS = 10000;
+var BRICK_DROP_CD_MS = 3000;
 
 function brickEaseProgress(progress) {
   const p = Math.max(0, Math.min(1, progress || 0));
@@ -93,7 +93,7 @@ function brickManualDropPayload(saved, at) {
 }
 
 function brickAutoSpawnAllowed(state) {
-  if (!state || state.frozen || state.rest || state.lunch) {
+  if (!state || state.rest || state.lunch) {
     return false;
   }
   return (state.progress || 0) > 0;
@@ -215,17 +215,19 @@ function brickPileRatio() {
   return Math.max(0, (box.h - top) / box.h);
 }
 
+function brickWantPileRatio(progress) {
+  return brickEaseProgress(progress) * BRICK_CAP_RATIO;
+}
+
 function brickCanSpawn() {
   if (!brickAutoSpawnAllowed(brickFall)) {
     return false;
   }
-  if (brickPileRatio() >= BRICK_CAP_RATIO - 0.01) {
+  const want = brickWantPileRatio(brickFall.progress);
+  if (want <= 0.02) {
     return false;
   }
-  const box = brickPanelBox();
-  const maxN = brickMaxCount(box.w, box.h, brickFall.size);
-  const have = brickFall.settled.length + brickFall.falling.length;
-  return have < brickTargetCount(brickFall.progress, maxN);
+  return brickPileRatio() < want - 0.01;
 }
 
 function makeBrick(x, y, falling) {
@@ -494,21 +496,18 @@ function brickCatchUp() {
     return;
   }
   brickFall.caughtUp = true;
+  const want = brickWantPileRatio(brickFall.progress);
+  if (want <= 0.02 || brickPileRatio() >= want - 0.05) {
+    return;
+  }
   const box = brickPanelBox();
   const maxN = brickMaxCount(box.w, box.h, brickFall.size);
-  const target = brickTargetCount(brickFall.progress, maxN);
-  const have = brickFall.settled.length + brickFall.falling.length;
-  if (target <= have) {
-    return;
+  let guard = 0;
+  while (brickPileRatio() < want - 0.1 && brickFall.settled.length < maxN && guard < maxN) {
+    packSettled(1);
+    guard += 1;
   }
-  const deficit = target - have;
-  if (brickFall.reduceMotion) {
-    packSettled(deficit);
-    return;
-  }
-  if (deficit > 4) {
-    packSettled(deficit - 1);
-  }
+  brickFall.nextSpawnAt = 0;
   spawnFalling();
   schedulePersistBrickPile();
 }
@@ -529,7 +528,7 @@ function brickLoop(ts) {
   if (!brickFall.reduceMotion || brickFall.falling.length) {
     stepFalling(dt);
   }
-  if (!brickFall.reduceMotion && ts >= brickFall.nextSpawnAt && brickCanSpawn()) {
+  if (ts >= brickFall.nextSpawnAt && brickCanSpawn()) {
     if (spawnFalling()) {
       brickFall.nextSpawnAt = ts + brickSpawnDelayMs(brickFall.progress, brickPileRatio());
     }
@@ -713,7 +712,11 @@ function tickBrickFall(info) {
   }
   brickFall.progress = info.progress || 0;
   brickFall.rest = rest;
+  const wasLunch = brickFall.lunch;
   brickFall.lunch = !!info.lunch;
+  if (wasLunch && !brickFall.lunch) {
+    brickFall.nextSpawnAt = 0;
+  }
   if (brickFall.rest || brickFall.lunch || brickFall.progress <= 0) {
     return;
   }
@@ -723,6 +726,7 @@ function tickBrickFall(info) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     brickEaseProgress: brickEaseProgress,
+    brickWantPileRatio: brickWantPileRatio,
     brickMaxCount: brickMaxCount,
     brickTargetCount: brickTargetCount,
     brickSpawnDelayMs: brickSpawnDelayMs,
