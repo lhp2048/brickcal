@@ -23,23 +23,26 @@ set "ZIP=%RELEASE_DIR%\brickcal-store-%STAMP%.zip"
 if exist "%ZIP%" del /f /q "%ZIP%"
 
 set "SEVEN=C:\Program Files\7-Zip\7z.exe"
-if exist "%SEVEN%" (
-  pushd "%ROOT%\extension"
-  "%SEVEN%" a -tzip "%ZIP%" * -x!.git -x!.DS_Store >nul
-  set "PACK_ERR=%ERRORLEVEL%"
-  popd
-  if %PACK_ERR% GTR 1 (
-    echo [ERR] 7z pack failed
-    exit /b 1
-  )
-) else (
-  powershell -NoProfile -Command ^
-    "Compress-Archive -Path '%ROOT%\extension\*' -DestinationPath '%ZIP%' -Force"
-  if errorlevel 1 (
-    echo [ERR] zip pack failed
-    exit /b 1
-  )
+if not exist "%SEVEN%" goto :pszip
+
+pushd "%ROOT%\extension"
+"%SEVEN%" a -tzip "%ZIP%" * -x!.git -x!.DS_Store
+set "PACK_ERR=%ERRORLEVEL%"
+popd
+if %PACK_ERR% GTR 1 (
+  echo [ERR] 7z pack failed
+  exit /b 1
+)
+goto :ok
+
+:pszip
+powershell -NoProfile -Command ^
+  "Compress-Archive -Path '%ROOT%\extension\*' -DestinationPath '%ZIP%' -Force"
+if errorlevel 1 (
+  echo [ERR] zip pack failed
+  exit /b 1
 )
 
+:ok
 echo [OK] %ZIP%
 exit /b 0
