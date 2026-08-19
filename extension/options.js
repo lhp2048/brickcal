@@ -7,6 +7,7 @@ var SETTINGS_DEFAULTS = {
   workColor: "#ff8a2b",
   weekStart: "sun",
   monthSwitch: "dblclick",
+  brickLabel: "砖",
   brickClearDay: "",
   brickClearCount: 0,
   brickClearAt: 0,
@@ -26,6 +27,7 @@ var optionsState = {
   workColor: "#ff8a2b",
   weekStart: "sun",
   monthSwitch: "dblclick",
+  brickLabel: "砖",
 };
 
 function escapeHtml(text) {
@@ -76,6 +78,7 @@ function persist() {
   optionsState.workColor = normalizeHex(document.getElementById("workColor").value);
   optionsState.weekStart = normalizeWeekStart(document.getElementById("weekStart").value) === 1 ? "mon" : "sun";
   optionsState.monthSwitch = normalizeMonthSwitch(document.getElementById("monthSwitch").value);
+  optionsState.brickLabel = normalizeBrickLabel(document.getElementById("brickLabel").value);
   document.getElementById("workStart").value = start.text;
   document.getElementById("workEnd").value = end.text;
   document.getElementById("lunchStart").value = optionsState.lunchStart;
@@ -83,6 +86,7 @@ function persist() {
   document.getElementById("workColor").value = optionsState.workColor;
   document.getElementById("weekStart").value = optionsState.weekStart;
   document.getElementById("monthSwitch").value = optionsState.monthSwitch;
+  document.getElementById("brickLabel").value = optionsState.brickLabel;
   updateColorPreview();
   return saveSettings({
     homeCountry: optionsState.homeCountry,
@@ -93,6 +97,7 @@ function persist() {
     workColor: optionsState.workColor,
     weekStart: optionsState.weekStart,
     monthSwitch: optionsState.monthSwitch,
+    brickLabel: optionsState.brickLabel,
   }).then(function () {
     showSaved();
   });
@@ -112,6 +117,11 @@ function clearBricksNow() {
     .then(function (saved) {
       const payload = brickClearPayload(saved);
       return saveSettings(payload).then(function () {
+        return chrome.storage.local.set({
+          brickPileDay: payload.brickPileDay,
+          brickPile: [],
+        });
+      }).then(function () {
         renderClearStat(payload);
       });
     })
@@ -161,6 +171,7 @@ function bind() {
   document.getElementById("homeSelect").addEventListener("change", persist);
   document.getElementById("weekStart").addEventListener("change", persist);
   document.getElementById("monthSwitch").addEventListener("change", persist);
+  document.getElementById("brickLabel").addEventListener("change", persist);
   document.getElementById("workColor").addEventListener("input", function () {
     updateColorPreview();
   });
@@ -182,6 +193,7 @@ Promise.all([fetch("./data/holidays.json").then(function (r) { return r.json(); 
     optionsState.workColor = normalizeHex(pair[1].workColor || SETTINGS_DEFAULTS.workColor);
     optionsState.weekStart = normalizeWeekStart(pair[1].weekStart) === 1 ? "mon" : "sun";
     optionsState.monthSwitch = normalizeMonthSwitch(pair[1].monthSwitch);
+    optionsState.brickLabel = normalizeBrickLabel(pair[1].brickLabel);
     document.getElementById("workStart").value = optionsState.workStart;
     document.getElementById("workEnd").value = optionsState.workEnd;
     document.getElementById("lunchStart").value = optionsState.lunchStart;
@@ -189,6 +201,7 @@ Promise.all([fetch("./data/holidays.json").then(function (r) { return r.json(); 
     document.getElementById("workColor").value = optionsState.workColor;
     document.getElementById("weekStart").value = optionsState.weekStart;
     document.getElementById("monthSwitch").value = optionsState.monthSwitch;
+    document.getElementById("brickLabel").value = optionsState.brickLabel;
     updateColorPreview();
     renderHome();
     renderClearStat(pair[1]);

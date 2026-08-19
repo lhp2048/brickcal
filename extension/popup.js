@@ -481,6 +481,7 @@ function loadSettings() {
     workColor: "#ff8a2b",
     weekStart: "sun",
     monthSwitch: "dblclick",
+    brickLabel: "砖",
     brickClearDay: "",
     brickClearCount: 0,
     brickClearAt: 0,
@@ -489,27 +490,49 @@ function loadSettings() {
     brickPileDay: "",
     brickPile: [],
   };
+  const pileKeys = { brickPileDay: "", brickPile: [] };
   return new Promise(function (resolve) {
-    function finish(items) {
-      resolve(items || defaults);
-    }
-    function fromLocal() {
+    function mergePile(base) {
+      const out = Object.assign({}, defaults, base || {});
       try {
-        chrome.storage.local.get(defaults, finish);
+        chrome.storage.local.get(pileKeys, function (localItems) {
+          const local = localItems || {};
+          const localPile = Array.isArray(local.brickPile) ? local.brickPile : [];
+          if (local.brickPileDay || localPile.length) {
+            out.brickPileDay = local.brickPileDay || "";
+            out.brickPile = localPile;
+          } else if (Array.isArray(out.brickPile) && out.brickPile.length) {
+            // 旧版写在 sync 里：迁到 local，避免再撞 8KB 上限
+            try {
+              chrome.storage.local.set({
+                brickPileDay: out.brickPileDay || "",
+                brickPile: out.brickPile,
+              });
+            } catch (errMigrate) {}
+          }
+          resolve(out);
+        });
       } catch (err) {
-        finish(defaults);
+        resolve(out);
+      }
+    }
+    function fromLocalAll() {
+      try {
+        chrome.storage.local.get(defaults, mergePile);
+      } catch (err) {
+        resolve(defaults);
       }
     }
     try {
       chrome.storage.sync.get(defaults, function (items) {
         if (chrome.runtime.lastError) {
-          fromLocal();
+          fromLocalAll();
           return;
         }
-        finish(items);
+        mergePile(items);
       });
     } catch (err) {
-      fromLocal();
+      fromLocalAll();
     }
   });
 }
@@ -544,6 +567,9 @@ function applyLoadedSettings(saved) {
   applyWorkColor(saved.workColor || "#ff8a2b");
   state.weekStart = normalizeWeekStart(saved.weekStart);
   state.monthSwitch = normalizeMonthSwitch(saved.monthSwitch);
+  if (typeof setBrickLabel === "function") {
+    setBrickLabel(saved.brickLabel);
+  }
   applyBrickClearSettings(saved);
 }
 

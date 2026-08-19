@@ -1,8 +1,16 @@
+html {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 body.options-page {
   width: 420px;
-  min-height: 560px;
+  min-height: 100%;
+  height: auto;
   display: block;
   padding-bottom: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .options-page .popup-head {
@@ -67,6 +75,7 @@ body.options-page {
 
 .opt-block input[type="time"],
 .opt-block input[type="number"],
+.opt-block input[type="text"],
 .opt-block select {
   width: 100%;
   border: 1px solid var(--line);

@@ -2,6 +2,15 @@ var BRICK_CAP_RATIO = 0.8;
 var BRICK_FLOOR_PAD = 2;
 var BRICK_SIDE_PAD = 8;
 var BRICK_DROP_CD_MS = 3000;
+var DEFAULT_BRICK_LABEL = "砖";
+
+function normalizeBrickLabel(value) {
+  const text = String(value == null ? "" : value).trim();
+  if (!text) {
+    return DEFAULT_BRICK_LABEL;
+  }
+  return Array.from(text).slice(0, 2).join("");
+}
 
 function brickEaseProgress(progress) {
   const p = Math.max(0, Math.min(1, progress || 0));
@@ -22,7 +31,14 @@ function brickTargetCount(progress, maxCount) {
 function brickSpawnDelayMs(progress, pileRatio) {
   const p = Math.max(0, Math.min(1, progress || 0));
   const pile = Math.max(0, Math.min(1, pileRatio || 0));
-  const slow = 380 + p * p * 4600;
+  const want = brickWantPileRatio(p);
+  let slow = 380 + p * p * 4600;
+  // 堆已超当前工时目标时不硬停，只大幅放慢，避免“半屏就不动了”
+  if (pile > want + 0.01) {
+    const room = Math.max(0.08, BRICK_CAP_RATIO - want);
+    const ahead = Math.max(0, Math.min(1, (pile - want) / room));
+    slow *= 5 + ahead * 14;
+  }
   const pileSlow = pile > 0.5 ? 1 + (pile - 0.5) * 6 : 1;
   return slow * pileSlow;
 }
@@ -47,6 +63,7 @@ var brickFall = {
   savedNorm: null,
   layoutW: 0,
   layoutH: 0,
+  label: DEFAULT_BRICK_LABEL,
 };
 
 function brickNowDayKey(at) {
@@ -99,16 +116,20 @@ function brickAutoSpawnAllowed(state) {
   return (state.progress || 0) > 0;
 }
 
+function brickRoundNorm(n) {
+  return Math.round((Number(n) || 0) * 10000) / 10000;
+}
+
 function brickSerializePile(bricks, box) {
   if (!box || !box.w || !box.h) {
     return [];
   }
   return (bricks || []).map(function (b) {
     return {
-      x: b.x / box.w,
-      yb: (box.h - b.y) / box.h,
-      s: b.s / box.w,
-      rot: b.rot || 0,
+      x: brickRoundNorm(b.x / box.w),
+      yb: brickRoundNorm((box.h - b.y) / box.h),
+      s: brickRoundNorm(b.s / box.w),
+      rot: brickRoundNorm(b.rot || 0),
     };
   });
 }
@@ -223,11 +244,11 @@ function brickCanSpawn() {
   if (!brickAutoSpawnAllowed(brickFall)) {
     return false;
   }
-  const want = brickWantPileRatio(brickFall.progress);
-  if (want <= 0.02) {
+  if ((brickFall.progress || 0) <= 0) {
     return false;
   }
-  return brickPileRatio() < want - 0.01;
+  // 自动掉砖直到视觉封顶；是否“超前工时”只影响间隔，不再直接停掉
+  return brickPileRatio() < BRICK_CAP_RATIO - 0.01;
 }
 
 function makeBrick(x, y, falling) {
@@ -436,12 +457,19 @@ function stepFalling(dt) {
   brickFall.falling = keep;
 }
 
+function setBrickLabel(value) {
+  brickFall.label = normalizeBrickLabel(value);
+  return brickFall.label;
+}
+
 function drawBrick(ctx, b) {
   ctx.save();
   ctx.translate(b.x, b.y);
   ctx.rotate(b.rot);
   const s = b.s;
   const r = Math.max(3, s * 0.16);
+  const label = brickFall.label || DEFAULT_BRICK_LABEL;
+  const chars = Array.from(label).length;
   ctx.fillStyle = "rgba(255, 250, 241, 0.94)";
   ctx.strokeStyle = "rgba(90, 28, 8, 0.38)";
   ctx.lineWidth = 1.2;
@@ -454,10 +482,13 @@ function drawBrick(ctx, b) {
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "rgba(196, 92, 38, 0.95)";
-  ctx.font = "700 " + Math.round(s * 0.56) + "px 'Microsoft YaHei','PingFang SC',sans-serif";
+  ctx.font =
+    "700 " +
+    Math.round(s * (chars > 1 ? 0.4 : 0.56)) +
+    "px 'Microsoft YaHei','PingFang SC',sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("砖", 0, 1);
+  ctx.fillText(label, 0, 1);
   ctx.restore();
 }
 
@@ -545,30 +576,29 @@ function brickLoop(ts) {
 }
 
 function persistBrickPileNow() {
+  if (schedulePersistBrickPile.timer) {
+    clearTimeout(schedulePersistBrickPile.timer);
+    schedulePersistBrickPile.timer = 0;
+  }
   const box = brickPanelBox();
   const items = brickSerializePile(brickFall.settled, box);
   brickFall.savedNorm = items;
-  if (typeof chrome === "undefined" || !chrome.storage) {
+  if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
     return;
   }
+  // 砖堆坐标只存 local：sync 单条约 8KB，砖多时会写失败，看起来像“没保存”
   const data = {
     brickPileDay: brickNowDayKey(),
     brickPile: items,
   };
-  const setter = chrome.storage.sync && chrome.storage.sync.set ? chrome.storage.sync.set(data) : null;
-  if (setter && setter.catch) {
-    setter.catch(function () {
-      chrome.storage.local.set(data);
-    });
-    return;
-  }
   try {
-    chrome.storage.sync.set(data);
-  } catch (err) {
-    try {
-      chrome.storage.local.set(data);
-    } catch (err2) {}
-  }
+    chrome.storage.local.set(data);
+  } catch (err) {}
+  try {
+    if (chrome.storage.sync && chrome.storage.sync.remove) {
+      chrome.storage.sync.remove(["brickPile", "brickPileDay"]);
+    }
+  } catch (err2) {}
 }
 
 function schedulePersistBrickPile() {
@@ -682,6 +712,19 @@ function clearBrickPile() {
   persistBrickPileNow();
 }
 
+function bindBrickPersistFlush() {
+  if (bindBrickPersistFlush.done) {
+    return;
+  }
+  bindBrickPersistFlush.done = true;
+  window.addEventListener("pagehide", persistBrickPileNow);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") {
+      persistBrickPileNow();
+    }
+  });
+}
+
 function startBrickFall() {
   const canvas = document.getElementById("brickCanvas");
   if (!canvas || brickFall.running) {
@@ -694,6 +737,7 @@ function startBrickFall() {
   brickFall.running = true;
   brickResizeCanvas();
   bindBrickDrop();
+  bindBrickPersistFlush();
   if (brickFall.savedNorm && brickFall.savedNorm.length) {
     queueRestorePile();
   }
@@ -742,6 +786,8 @@ if (typeof module !== "undefined" && module.exports) {
     brickDropReady: brickDropReady,
     brickCanManualDrop: brickCanManualDrop,
     brickShouldClearOnTick: brickShouldClearOnTick,
+    normalizeBrickLabel: normalizeBrickLabel,
+    DEFAULT_BRICK_LABEL: DEFAULT_BRICK_LABEL,
     BRICK_CAP_RATIO: BRICK_CAP_RATIO,
     BRICK_DROP_CD_MS: BRICK_DROP_CD_MS,
   };

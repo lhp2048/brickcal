@@ -327,6 +327,7 @@ assert.strictEqual(brickFallLib.brickTargetCount(0, 40), 0);
 assert.strictEqual(brickFallLib.brickTargetCount(1, 40), 40);
 assert.ok(brickFallLib.brickTargetCount(0.5, 40) < 40);
 assert.ok(brickFallLib.brickSpawnDelayMs(0.9, 0.7) > brickFallLib.brickSpawnDelayMs(0.1, 0.1));
+assert.ok(brickFallLib.brickSpawnDelayMs(0.3, 0.7) > brickFallLib.brickSpawnDelayMs(0.3, 0.2));
 assert.ok(brickFallLib.brickMaxCount(292, 480, 26) >= 10);
 const clearAt = new Date(2026, 7, 19, 10, 0, 0, 0);
 assert.deepStrictEqual(brickFallLib.brickClearStats({}, clearAt), { day: "2026-8-19", count: 0 });
@@ -373,5 +374,9 @@ assert.ok(Math.abs(restoredLegacy[0].y - 380) < 0.01);
 assert.strictEqual(brickFallLib.brickPileFromSaved({ brickPileDay: "2026-8-18", brickPile: piled }, clearAt).length, 0);
 assert.strictEqual(brickFallLib.brickPileFromSaved({ brickPileDay: "2026-8-19", brickPile: piled }, clearAt).length, 1);
 assert.deepStrictEqual(brickFallLib.brickClearPayload({}, clearAt).brickPile, []);
+assert.strictEqual(brickFallLib.normalizeBrickLabel(""), "砖");
+assert.strictEqual(brickFallLib.normalizeBrickLabel("  搬  "), "搬");
+assert.strictEqual(brickFallLib.normalizeBrickLabel("搬砖啊"), "搬砖");
+assert.strictEqual(brickFallLib.DEFAULT_BRICK_LABEL, "砖");
 
 console.log("ok");
